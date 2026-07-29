@@ -1,75 +1,138 @@
 # Flower Classification
 
-This repository contains code for analyzing six different models for flower image classification using Convolutional Neural Networks (CNNs). The goal is to select the best model for accurately classifying flowers.
+## Introduction
 
-### Project Structure
-- `Dataset Folder` : Folder containing flower dataset for training the models.
-- `Pre-Trained Model` : Folder containing pre-train model like **ResNet50**
-- `Test Dataset Folder` : Folder containing flower dataset for testing the models.
-- `myApp` : Folder containing files for deploying the flower classification model into an application.
-- `Flower_Classification.tflite` : TensorFlow Lite model for flower classification, optimized for mobile and embedded devices.
-- `Flower_Classification_Optimized.tflite` : Optimized version of the TFLite model for improved performance and efficiency.
-- `Flower_model.ipynb` : Jupyter Notebook containing the entire workflow from data preprocessing to model training and evaluation.
-- `Readme.md` : This file, providing an overview of the project.
+10-class flower image classification (black-eyed Susan, calendula, California
+poppy, common daisy, coreopsis, dandelion, iris, rose, sunflower, tulip),
+evaluated by validation accuracy. Six candidate CNN architectures are trained
+independently and compared - a custom Conv2D CNN, the same CNN with
+LeakyReLU, and frozen-backbone transfer learning on InceptionV3, InceptionV3
+with a LeakyReLU head, VGG16, and ResNet50.
 
-### Dataset
+**InceptionV3 + LeakyReLU head (Model 4)** is the best performer: an
+InceptionV3 backbone (Szegedy et al., "Rethinking the Inception
+Architecture for Computer Vision," CVPR 2016,
+https://arxiv.org/abs/1512.00567), frozen and pretrained, feeding four
+Conv2D+BatchNorm+LeakyReLU blocks before a dense softmax head.
 
-The dataset used in this project includes images of the following flower classes:
-- Black Eyed Susan
-- Calendula
-- California Poppy
-- Common Daisy
-- Coreopsis
-- Dandelion
-- Iris
-- Rose
-- Sunflower
-- Tulip
+| Model | Val Accuracy |
+|-------|--------------|
+| Model 6 (ResNet50) | 27.34% |
+| Model 1 (Conv2D CNN) | 79.55% |
+| Model 3 (Conv2D + LeakyReLU) | 81.07% |
+| Model 5 (VGG16) | 88.54% |
+| Model 2 (InceptionV3) | 90.46% |
+| **Model 4 (InceptionV3 + LeakyReLU)** | **91.99%** |
 
-### Data Preprocessing & Augmentation
-- Data preprocessing and data augmentation steps include normalization `rescale=1./255.0` and artificial variations:
-  - Rotation `rotation_range=40` – Rotates images randomly up to 40 degrees.
-  - Shifts `width_shift_range`, `height_shift_range` – Moves images slightly in horizontal/vertical directions.
-  - Zoom `zoom_range=0.2` – Zooms in or out on images.
-  - Shear `shear_range=0.2` – Applies slanting transformation.
+*Measured on the historical training runs recorded in `Flower_model.ipynb`
+(20 epochs each).*
 
-### Model Building
-- **Model 1** : This Convolutional Neural Network (CNNs) model begins with a Conv2D layer and followed by a MaxPooling 2D layer
-- **Model 2** : This model leverages transfer learning with InceptionV3, a pretrained Convolutional Neural Network (CNNs)
-- **Model 3** : This Convolutional Neural Network (CNNs) model begins with a Conv2D layer and followed by a MaxPooling 2D layer and using LeakyRelu as its activation function
-- **Model 4** : This model leverages transfer learning with InceptionV3 and uses LeakyRelu as its activation function
-- **Model 5** : This model leverages transfer learning with VGG16 as a feature extractor.
-- **Model 6** : This model leverages transfer learning with ResNet50, a pretrained Convolutional Neural Network (CNNs)
+## Environment Setup
 
-### Evaluation
-- Model 2 & Model 4 (InceptionV3-based models) achieve the highest accuracy, indicating that InceptionV3 is highly effective for flower classification. Model 4 performs slightly better, likely due to the addition of LeakyReLU.
-- Model 5 (VGG16-based) also performs well but doesn’t reach the same level as InceptionV3 models, suggesting that VGG16 might not be as optimal for this task.
-- Model 1 & Model 3 (custom CNNs) show moderate accuracy improvements. Model 3, which includes LeakyReLU, outperforms Model 1, highlighting the benefits of using LeakyReLU over standard activation functions.
-- Model 6 (ResNet50-based) performs the worst, struggling to reach high accuracy. This could be due to overfitting, improper fine-tuning, or incompatibility with the dataset.
+```bash
+git clone https://github.com/ArkZ10/Plant-Classification.git
+cd Plant-Classification
 
-## Instructions
+conda create -n flower-classification python=3.10 -y
+conda activate flower-classification
 
-To run the notebook (`Flower_model.ipynb`)
-
-1. clone the repository:
-   ```bash
-   git clone https://github.com/ArkZ10/Plant-Classification.git
-   cd Plant-Classification
-   ```
-2. Open the notebook in Jupyter or Google Colab and execute each cell sequentially.
-
-## Deployment
-The final TensorFlow Lite model (flower_classification_optimized.tflite) is deployed to a mobile application for real-time flower recognition. The lightweight nature of TensorFlow Lite ensures efficient inference on devices with limited computational resources, making it suitable for mobile deployment.
+pip install -r requirements.txt
+```
 
 ## Usage
-1. Clone the repository and navigate to the project directory.
-2. Install the required packages using.
-3. Run the provided scripts or notebooks to preprocess data, train the model, and evaluate it.
-4. Use the converted TensorFlow Lite model (flower_classification_optimized.tflite) for deployment on mobile or edge devices.
 
-## Author
+All scripts are run **from the repository root**.
 
-[Yeftha Joshua Ezekiel](https://github.com/ArkZ10)
+### 1. Prepare dataset
 
+`Dataset/` already ships with the repo (superset of classes); this splits
+the 10 classes actually used into `data_split/train` and `data_split/val`,
+and plots the per-class distribution:
 
+```
+Dataset/
+├── black_eyed_susan/
+├── calendula/
+├── ... (10+ class folders)
+```
 
+```bash
+python tools/prepare_dataset.py
+```
+
+### 2. Training
+
+Each model trains independently (no warm-starting between them):
+
+```bash
+python train/train_model1.py   # Conv2D + MaxPooling CNN
+python train/train_model2.py   # InceptionV3 (frozen) + Conv2D head
+python train/train_model3.py   # Conv2D CNN + LeakyReLU
+python train/train_model4.py   # InceptionV3 (frozen) + LeakyReLU head
+python train/train_model5.py   # VGG16 (frozen) + LeakyReLU head
+python train/train_model6.py   # ResNet50 (frozen) + LeakyReLU head
+```
+
+Models 2 and 4 load `Pre-Trained Model/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5`
+locally; models 5 and 6 fetch ImageNet weights via Keras Applications.
+Each script saves `checkpoints/<name>.keras` and `history/<name>.json`.
+
+### 3. Compare results
+
+```bash
+python tools/plot_results.py
+```
+
+Loads all six `history/*.json` files and saves the 2x2 accuracy/loss
+comparison grid to `figures/model_comparison.png`.
+
+## Performance Snapshot
+
+| Model | Backbone | Key Addition | Val Accuracy |
+|-------|----------|---------------|--------------|
+| Model 6 | ResNet50 (frozen, ImageNet) | LeakyReLU head | 27.34% |
+| Model 1 | none (custom CNN) | Conv2D + MaxPooling, L2 reg | 79.55% |
+| Model 3 | none (custom CNN) | + LeakyReLU activations | 81.07% |
+| Model 5 | VGG16 (frozen, ImageNet) | LeakyReLU head | 88.54% |
+| Model 2 | InceptionV3 (frozen) | Conv2D head | 90.46% |
+| **Model 4** | **InceptionV3 (frozen)** | **+ LeakyReLU head** | **91.99%** |
+
+Model 6 (ResNet50) underperforms all other models, including the plain
+CNN baseline - likely undertrained relative to its capacity in just 20
+epochs with a frozen backbone.
+
+## Deployment
+
+The trained Model 4 was exported to TensorFlow Lite
+(`Flower_Classification_optimized.tflite`, conversion not included in this
+repo) and is bundled into the Android app under `myApp/`, which loads it
+from `myApp/app/src/main/ml/` for on-device inference via the camera or
+gallery.
+
+## Project Structure
+
+```
+.
+├── options.py                  # CLI-configurable paths and hyperparameters
+├── net/
+│   ├── backbones.py              # frozen InceptionV3/VGG16/ResNet50 loaders
+│   └── models.py                 # build_model1..build_model6
+├── utils/
+│   ├── data_utils.py              # train/val split, ImageDataGenerator setup
+│   └── eda_utils.py               # resolution check, class counts/plot
+├── train/
+│   ├── common.py                  # shared compile/fit/save
+│   └── train_model1.py .. train_model6.py
+├── tools/
+│   ├── prepare_dataset.py         # EDA + train/val split
+│   └── plot_results.py            # 2x2 accuracy/loss comparison grid
+├── figures/                        # saved plots
+├── Dataset/, Test_dataset/         # image data
+├── Pre-Trained Model/               # local InceptionV3/ResNet50 weights
+├── myApp/                           # Android deployment app
+└── Flower_model.ipynb                # original exploratory notebook
+```
+
+![Class Distribution](figures/class_distribution.png)
+
+![Model Comparison](figures/model_comparison.png)

@@ -26,16 +26,15 @@ import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
+
     Button camera, gallery;
     ImageView imageView;
     TextView result;
-    int imageSize = 256;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,7 +113,8 @@ public class MainActivity extends AppCompatActivity {
             // Release model resources
             model.close();
         } catch (IOException e) {
-            // Handle IOException
+            Log.e(TAG, "Model inference failed", e);
+            result.setText(R.string.classification_error);
         }
     }
 
@@ -126,8 +126,6 @@ public class MainActivity extends AppCompatActivity {
                 int dimension = Math.min(image.getWidth(), image.getHeight());
                 image = ThumbnailUtils.extractThumbnail(image, dimension, dimension);
                 imageView.setImageBitmap(image);
-
-                image = Bitmap.createScaledBitmap(image, imageSize, imageSize, false);
                 classifyImage(image);
             }else{
                 Uri dat = data.getData();
@@ -138,8 +136,6 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
                 imageView.setImageBitmap(image);
-
-                image = Bitmap.createScaledBitmap(image, imageSize, imageSize, false);
                 classifyImage(image);
             }
         }

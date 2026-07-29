@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">myApp</string>
+    <string name="classification_error">Could not classify image</string>
 </resources>
